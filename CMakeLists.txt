@@ -1,0 +1,52 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.9)
+PROJECT(openclwprime)
+SET(VERSION "1.0.0")
+
+# GNU compiler options
+IF((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX) AND NOT CMAKE_COMPILER_IS_MINGW)
+	IF (BUILD_SHARED_LIBS AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+		
+	ENDIF()
+
+	ADD_DEFINITIONS( -Wall -w -fpermissive -Wfatal-errors ) 
+	ADD_DEFINITIONS( -DWPRIME_SOURCEPATH="/usr/local/share/clwprime/wprime.cl") 
+
+	IF (CMAKE_BUILD_TYPE STREQUAL "Release")
+		MESSAGE(STATUS "Compile for release.")
+		ADD_DEFINITIONS(-DNDEBUG)
+		ADD_DEFINITIONS(-O3)
+		SET(CMAKE_RELEASE TRUE)
+		SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
+	ELSE()
+		MESSAGE(STATUS "Compile for debug.")
+		ADD_DEFINITIONS(-D_DEBUG)
+		ADD_DEFINITIONS(-g3)
+		SET(CMAKE_DEBUG TRUE)
+	ENDIF()
+
+
+ELSEIF(MSVC)
+	ADD_DEFINITIONS(/MP)
+	ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
+ENDIF()
+
+# Source files
+FILE(GLOB gCore		"${CMAKE_CURRENT_SOURCE_DIR}/*.c")
+
+# Add execute and link library.
+ADD_EXECUTABLE(clwprime ${gCore} )
+TARGET_LINK_LIBRARIES(clwprime -lOpenCL)
+
+# Install program.
+INSTALL (TARGETS clwprime DESTINATION bin)
+INSTALL (FILES wprime.cl DESTINATION /usr/local/share/clwprime)
+
+# Create distribution archive.
+IF( UNIX )	
+	SET( TARGETDIR "${PROJECT_NAME}-${VERSION}")
+	ADD_CUSTOM_TARGET(	distribution
+				COMMAND mkdir -p ${TARGETDIR}
+				COMMAND cp -r  *.c *.cl CMakeLists.txt LICENSE ${TARGETDIR}
+				COMMAND tar cf - ${TARGETDIR} | gzip -c > ${TARGETDIR}.tar.gz 
+				COMMAND rm -r ${TARGETDIR} )
+ENDIF()
