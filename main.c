@@ -163,21 +163,35 @@ cl_program createProgram(cl_context context, unsigned int nDevices, cl_device_id
 	char* source;
 	FILE* f;
 	long int flen;
+	long int nbytes;
+
 	f = fopen(cfilename, "rb");
+	if(!f){
+		fprintf(stderr, "Failed loading %s : %s\n", cfilename, strerror(errno));
+		return NULL;
+	}
+	
+	/*	*/
 	fseek(f, 0, SEEK_END);
 	flen = ftell(f);
 	fseek(f, SEEK_SET, 0);
-	source = (char*)malloc(flen);
-	fread(source, 1, flen, f);
+
+	/*	*/
+	source = (char*)malloc(flen + 1);
+	nbytes = fread(source, 1, flen, f);
+	source[nbytes] = '\0';
+
+	/*	*/
 	fclose(f);
 
+	/*	*/
 	program = clCreateProgramWithSource(context, 1, (const char **)&source, NULL, &ciErrNum);
-
 	if(program == NULL || ciErrNum != CL_SUCCESS){
 		fprintf(stderr, "Failed to create program %d %s\n", ciErrNum, get_cl_error_str(ciErrNum));
 	}
 
-	ciErrNum = clBuildProgram(program, nDevices, device, NULL, NULL, NULL);
+	/*	*/
+	ciErrNum = clBuildProgram(program, nDevices, device, "", NULL, NULL);
 	if(ciErrNum != CL_SUCCESS){
 		if(ciErrNum == CL_BUILD_PROGRAM_FAILURE){
 			size_t build_log_size = 900;
@@ -188,6 +202,7 @@ cl_program createProgram(cl_context context, unsigned int nDevices, cl_device_id
 			fprintf(stderr, build_log );
 		}
 	}
+
 	free(source);
 	return program;
 }
@@ -258,19 +273,19 @@ int main(int argc, char** argv){
 	static const struct option longoption[] = {
 			{"version",		no_argument, 		0, 'v'},
 			{"ocatal",		no_argument, 		0, 'o'},
-			{"human",		no_argument, 	0, 'h'},
-			{"devices",		required_argument, 	0, 'n'},
+			{"human",		no_argument,		0, 'h'},
+			{"devices",		required_argument,	0, 'n'},
 			{"base",		required_argument, 	0, 'b'},
 			{NULL, NULL, NULL, NULL},
 	};
 
-
+	/*	*/
 	if(argc <= 1){
+		printf("Required at least one argument.\n");
 		return EXIT_FAILURE;
 	}
 
-
-	/**/
+	/*	Iterate through each argument.	 */
 	while((c = getopt_long(argc, (char *const *)argv, shortopt, longoption, &index)) != EOF){
 		switch(c){
 		case 'v':
@@ -296,7 +311,7 @@ int main(int argc, char** argv){
 	}
 	p = strtoll(argv[optind], NULL, base);
 
-	/*	create OpenCL context.	*/
+	/*	Create OpenCL context.	*/
 	context = createclcontext(&nDevices, &devices);
 	if(context == NULL){
 		status = EXIT_FAILURE;
@@ -311,7 +326,6 @@ int main(int argc, char** argv){
 		maxglobalworksize += kerplat[x].maxXworkitems;
 	}
 	plen = p / maxglobalworksize;
-
 
 	/*	Create */
 	buf = clCreateBuffer(context, CL_MEM_READ_WRITE, maxglobalworksize * sizeof(cl_uint), NULL, &err);
